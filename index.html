@@ -134,13 +134,13 @@
                 update(newPositions);
             });
 
-            createVisualization(adjacencyMatrix, nodes);
+            displayVisualization(adjacencyMatrix, nodes);
         })
         .catch((error) => {
             console.error("Error loading JSON data:", error);
         });
 
-    function createVisualization(adjacencyMatrix, nodes) {
+    function displayVisualization(adjacencyMatrix, nodes) {
 
         // Definition de la taille du svg 
         const margin = { top: 50, right: 50, bottom: 50, left: 50 };
@@ -222,7 +222,6 @@
 function update(newPositions) {
     // Met à jour la fonction d'échelle
     echellexy.domain(newPositions);
-    //const newOrderMatrix = adjacencyMatrix
 
     matrixViz.join("rect")
                 .transition()
