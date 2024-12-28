@@ -6,22 +6,36 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Relations entre Personnages</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        .visu {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            display: flex;
+            align-items: center; /* Centrage vertical */
+            justify-content: center; /* Centrage horizontal */
+        }
+        .filter-container {
+            position: absolute;
+            top: 50px;
+            right: 20px;
+        }
+    </style>
 </head>
 
 <body>
     <center>
         <h1>Relations entre les personnages de Game of Thrones.</h1>
+        <h4>Binôme : Ridouan Aafaf et Yakoubi Oumayma</h4>
     </center>
-    <center>
-        <label for="orderMenu">Choisissez un ordre :</label>
+    <div class="filter-container">
         <select id="orderMenu">
             <option value="appearances">Apparitions</option>
             <option value="zones">Zones</option>
             <option value="influences">Influences</option>
         </select>
-    </center>
+    </div>
     
-    <div id="matrice"></div>
+    <div class ="visu" id="visualisation"></div>
     
 </body>
 
@@ -91,7 +105,9 @@
 
     let nodes;
     let links;
-    let adjacencyMatrix;
+    let adjacencyMatrix , matrixViz ;
+    let echellexy;
+    let rows, columns;
 
     d3.json("https://lyondataviz.github.io/teaching/lyon1-m2/2024/data/got_social_graph.json")
         .then((data) => {
@@ -103,6 +119,20 @@
 
             adjacencyMatrix = createAdjacencyMatrix(nodes, links, undefined, true);
             console.log("Adjacency Matrix:", adjacencyMatrix);
+            
+            // Récupérer le menu et écouter les changements
+            document.getElementById("orderMenu").addEventListener("change", function () {
+                const selectedOrder = this.value;
+                let newPositions;
+                if (selectedOrder === "appearances") {
+                    newPositions = appearances;
+                } else if (selectedOrder === "zones") {
+                    newPositions = zones;
+                } else if (selectedOrder === "influences") {
+                    newPositions = influences;
+                }
+                update(newPositions);
+            });
 
             createVisualization(adjacencyMatrix, nodes);
         })
@@ -113,16 +143,16 @@
     function createVisualization(adjacencyMatrix, nodes) {
 
         // Definition de la taille du svg 
-        const margin = { top: 50, right: 50, bottom: 50, left: 50 },
-            width = 1000 - margin.left - margin.right,
-            height = 1000 - margin.top - margin.bottom;
+        const margin = { top: 50, right: 50, bottom: 50, left: 50 };
+        const width = 1000 - margin.left - margin.right;
+        const height = 1000 - margin.top - margin.bottom;
 
-        var svg = d3.select("#matrice")
+        var svg = d3.select("#visualisation")
             .append("svg")
-            .attr("width", width)
-            .attr("height", height)
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom)
             .append("g")
-            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+            .attr("transform", `translate(${margin.left}, ${margin.top})`);
 
 
         let maxWeight = d3.max(adjacencyMatrix, (d) => d.weight);
@@ -133,14 +163,15 @@
 
         // Create scaleBand 
         const positionPersonnages = d3.range(nodes.length);
-        const echellexy = d3.scaleBand()
+        echellexy = d3.scaleBand()
             .domain(positionPersonnages)
             .range([0, Math.min(width, height)])
             .paddingInner(0.1);
 
         var zoneScale = d3.scaleOrdinal(d3.schemeCategory10);
 
-        svg.selectAll("rect")
+        matrixViz = svg.append("g")
+            .selectAll("rect")
             .data(adjacencyMatrix)
             .join("rect")
             .attr("width", echellexy.bandwidth())
@@ -157,13 +188,10 @@
             .style("opacity", (d) => d.weight > 0 ? (d.weight * 10) / maxWeight : 0.1); // Opacité proportionnelle au poids
 
         // Add row labels
-        const labels = svg.append("g").attr("class", "labels");
-
-        var rows  = labels.append("g")
-            .selectAll(".row-label")
+        rows  = svg.append("g")
+            .selectAll("text")
             .data(nodes)
             .join("text")
-            .attr("class", "row-label") // Classe pour les lignes
             .attr("x", -10) // Align text to the left of the matrix
             .attr("y", (d, i) => echellexy(i) + echellexy.bandwidth() / 2)
             .attr("text-anchor", "end")
@@ -173,63 +201,53 @@
             .text((d) => d.character);
 
         // Add column labels
-        var columns  = labels
-            .append("g")
-            .selectAll(".col-label")
+        columns  = svg.append("g")
+            .attr("transform", `translate(0, -20)`)
+            .selectAll("text")
             .data(nodes)
             .join("text")
-            .attr("class", "col-label") // Classe pour les colonnes
             .attr("x", (d, i) => echellexy(i) + echellexy.bandwidth() / 2) // Position horizontale
-            .attr("y", -10) // Position verticale fixée juste sous la ligne
+            .attr("y", 0) // Position verticale fixée juste sous la ligne
             .style("text-anchor", "start") // Centrer horizontalement
             .attr("alignment-baseline", "middle")
-            .attr("transform", (d, i) => `rotate(-90, ${echellexy(i) + echellexy.bandwidth() / 2}, -10)`) // Rotation de -90°
+            .attr("transform", (d, i) => `rotate(-90, ${echellexy(i) + echellexy.bandwidth() / 2}, 0)`) // Rotation de -90°
             .style("font-size", "8px") // Taille des labels
             .style("font-family", "sans-serif") // Police
             .text((d) => d.character); // Le texte du label
             
-   // Récupérer le menu et écouter les changements
-   document.getElementById("orderMenu").addEventListener("change", function () {
-    const selectedOrder = this.value;
-    let newPositions;
-    if (selectedOrder === "appearances") {
-        newPositions = appearances;
-    } else if (selectedOrder === "zones") {
-        newPositions = zones;
-    } else if (selectedOrder === "influences") {
-        newPositions = influences;
-    }
-    update(newPositions, echellexy, rows, columns, svg);
-});
+   
 
 }
 // Fonction update pour réordonner et animer
-function update(newPositions, echellexy, rows, columns, svg) {
+function update(newPositions) {
     // Met à jour la fonction d'échelle
     echellexy.domain(newPositions);
+    //const newOrderMatrix = adjacencyMatrix
+
+    matrixViz.join("rect")
+                .transition()
+                .delay((d) => Math.max(d.x, d.y) * 50) // Synchronise le délai avec l'index maximum (x ou y)
+                .duration(500)
+                .attr("x", (d) => echellexy(d.x))
+                .attr("y", (d) => echellexy(d.y));
+
 
     // Animer les labels des lignes
     rows
         .transition()
-        .delay(500) // Délai de démarrage pour éviter que tout ne se produise en même temps
-        .duration(10)
+        .delay((d, i) => i * 50) // Ajoute un délai proportionnel à l'index
+        .duration(500)
         .attr("y", (d, i) => echellexy(i) + echellexy.bandwidth() / 2);
 
     // Animer les labels des colonnes
     columns
         .transition()
-        .delay(1000) // Délai de démarrage pour éviter que tout ne se produise en même temps
-        .duration(10)
-        .attr("y", (d, i) => echellexy(i) + echellexy.bandwidth() / 2);
+        .delay((d, i) => i * 50) // Ajoute un délai proportionnel à l'index
+        .duration(500)
+        .attr("x", 0)
+        .attr("y", 0)
+        .attr("transform", (d, i) => `translate(${echellexy(i) + echellexy.bandwidth() / 2}, 0) rotate(-90)`)
 
-
-    // Animer les rectangles de la matrice
-    svg.selectAll("rect")
-        .transition()
-        .delay(1000)
-        .duration(10)
-        .attr("x", (d) => echellexy(d.x))
-        .attr("y", (d) => echellexy(d.y));
 
 }
  
